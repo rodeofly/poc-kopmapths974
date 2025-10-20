@@ -232,6 +232,109 @@ function generateNewExercise(arg = null) {
 // ==============================
 // 🧠 3. Validation des réponses
 // ==============================
+function normalizeAnswerNode(node, collector) {
+  if (!collector) {
+    collector = { values: [], displays: [] };
+  }
+
+  if (node == null) {
+    return collector;
+  }
+
+  const pushValue = (value, display = null) => {
+    if (value != null && value !== "") {
+      collector.values.push(String(value));
+    }
+    if (display != null && display !== "") {
+      collector.displays.push(String(display));
+    }
+  };
+
+  if (Array.isArray(node)) {
+    node.forEach((item) => normalizeAnswerNode(item, collector));
+    return collector;
+  }
+
+  if (typeof node === "object") {
+    if ("value" in node && node.value !== node) {
+      normalizeAnswerNode(node.value, collector);
+    } else if ("valeur" in node && node.valeur !== node) {
+      normalizeAnswerNode(node.valeur, collector);
+    } else if ("texte" in node) {
+      pushValue(node.texte, node.texte);
+    } else if ("tex" in node) {
+      pushValue(node.tex, node.tex);
+    } else if ("texteCorr" in node) {
+      pushValue(node.texteCorr, node.texteCorr);
+    } else if ("display" in node && node.display !== node) {
+      normalizeAnswerNode(node.display, collector);
+    } else if ("min" in node || "max" in node) {
+      const min = node.min ?? node.minValue ?? "";
+      const max = node.max ?? node.maxValue ?? "";
+      if (min !== "" || max !== "") {
+        const rangeLabel = [min, max].filter((part) => part !== "").join(" – ");
+        pushValue(rangeLabel, rangeLabel);
+      }
+    } else {
+      try {
+        const serialized = JSON.stringify(node);
+        pushValue(serialized, serialized);
+      } catch (error) {
+        console.warn("⚠️ Réponse inattendue :", node, error);
+      }
+    }
+    return collector;
+  }
+
+  pushValue(node);
+  return collector;
+}
+
+function extractExpectedAnswer(corr) {
+  if (!corr) {
+    return { value: "", display: "" };
+  }
+
+  const collector = normalizeAnswerNode(corr.reponse ?? corr);
+  const value = collector.values.join(" ; ").trim();
+  const displaySource = collector.displays.join(" ; ");
+  const display = (displaySource || value).trim();
+
+  return {
+    value,
+    display
+  };
+}
+
+function normalizeTextValue(value) {
+  if (value == null) return "";
+  return String(value)
+    .replace(/\s+/g, " ")
+    .replace(/,/g, ".")
+    .trim();
+}
+
+function setFieldValidationState(field, isCorrect) {
+  if (!field) return;
+
+  const baseClasses = ["border", "rounded", "px-2", "py-1"];
+  const successClasses = ["border-green-500", "bg-green-50"]; // math-field support classList
+  const errorClasses = ["border-red-500", "bg-red-50"];
+
+  const classList = field.classList;
+  if (classList) {
+    baseClasses.forEach((cls) => classList.add(cls));
+    successClasses.concat(errorClasses).forEach((cls) => classList.remove(cls));
+    if (isCorrect) {
+      successClasses.forEach((cls) => classList.add(cls));
+      field.setAttribute("aria-invalid", "false");
+    } else {
+      errorClasses.forEach((cls) => classList.add(cls));
+      field.setAttribute("aria-invalid", "true");
+    }
+  }
+}
+
 function validateAnswer() {
   console.log("🧠 validateAnswer() déclenchée !");
 
@@ -244,32 +347,52 @@ function validateAnswer() {
   const corrections = ex.autoCorrection || [];
   let score = 0;
   let total = 0;
+  const feedbackDetails = [];
 
   corrections.forEach((corr, i) => {
     if (!corr || !corr.reponse) return;
 
-    const expected = corr.reponse.valeur?.value || corr.reponse.valeur || corr.reponse.value;
+    const { value: expectedValue, display: expectedDisplay } = extractExpectedAnswer(corr);
     const champ = document.querySelector(`#champTexteExundefinedQ${i}`);
     if (!champ) return;
 
     total++;
     const userVal = champ.value?.trim() || champ.getValue?.()?.trim() || "";
-    const isCorrect = userVal === expected.toString();
+    const normalizedUser = normalizeTextValue(userVal);
+    const candidateExpected = normalizeTextValue(expectedValue) || normalizeTextValue(expectedDisplay);
+    const isCorrect = candidateExpected !== "" && normalizedUser === candidateExpected;
+
+    setFieldValidationState(champ, isCorrect);
 
     const resultEl = document.querySelector(`#resultatCheckExundefinedQ${i}`);
     if (resultEl) {
-      resultEl.textContent = isCorrect
-        ? `✅ (${expected})`
-        : `❌ (${expected})`;
+      resultEl.textContent = isCorrect ? "✅" : "❌";
       resultEl.className = isCorrect ? "text-green-600" : "text-red-600";
     }
+
+    feedbackDetails.push(
+      `<li class="${
+        isCorrect ? "text-green-700" : "text-red-700"
+      }">${isCorrect ? "✅" : "❌"} Question ${
+        i + 1
+      } – Votre réponse : <strong>${userVal || "(vide)"}</strong>, attendu : <strong>${expectedDisplay || "?"}</strong></li>`
+    );
 
     if (isCorrect) score++;
   });
 
   const feedback = document.getElementById("feedbackContainerEl");
-  if (feedback)
-    feedback.innerHTML = `🎯 Score : <strong>${score}/${total}</strong>`;
+  if (feedback) {
+    if (!total) {
+      feedback.innerHTML = "⚠️ Aucune question évaluée.";
+    } else {
+      const detailList = feedbackDetails.length
+        ? `<ul class="mt-2 space-y-1 text-base">${feedbackDetails.join("")}</ul>`
+        : "";
+      feedback.innerHTML = `🎯 Score : <strong>${score}/${total}</strong>${detailList}`;
+      renderKaTeX(feedback);
+    }
+  }
 }
 
 // ==============================
