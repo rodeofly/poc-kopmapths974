@@ -1,0 +1,72 @@
+[
+  {
+    "code": "tablesDeMultiplications",
+    "titre": "Tables de multiplications",
+    "type": "ExerciceQcm",
+    "niveau": "6e",
+    "description": "Calcul mental et automatismes multiplicatifs."
+  },
+  {
+    "code": "eN5-3",
+    "titre": "Informations utiles ou inutiles",
+    "type": "ExerciceQcmA",
+    "niveau": "6e",
+    "description": "Identifier les données pertinentes dans un problème."
+  },
+  {
+    "code": "eN5-4",
+    "titre": "Trouver les opérations à effectuer",
+    "type": "ExerciceQcmA",
+    "niveau": "6e",
+    "description": "Associer les opérations aux situations concrètes."
+  },
+  {
+    "code": "eN4A-3",
+    "titre": "Diviser par 10, 100 ou 1 000",
+    "type": "ExerciceSimple",
+    "niveau": "6e",
+    "description": "Automatiser la division par les puissances de 10."
+  },
+  {
+    "code": "construireParSymetrie",
+    "titre": "Construire par symétrie axiale",
+    "type": "ExerciceCan",
+    "niveau": "6e",
+    "description": "Reproduire des figures en respectant l’axe de symétrie."
+  },
+  {
+    "code": "eG2C",
+    "titre": "Reconnaître les figures symétriques",
+    "type": "ExerciceVraiFaux",
+    "niveau": "6e",
+    "description": "Identifier les figures symétriques dans un plan."
+  },
+  {
+    "code": "eG6D",
+    "titre": "Pavages et motifs géométriques",
+    "type": "ExerciceCan",
+    "niveau": "6e",
+    "description": "Analyser les pavages simples à partir de figures usuelles."
+  },
+  {
+    "code": "pavagesEtTransformations",
+    "titre": "Transformations géométriques",
+    "type": "ExerciceBrevet",
+    "niveau": "5e",
+    "description": "Appliquer symétrie, translation et rotation sur des figures."
+  },
+  {
+    "code": "transformations",
+    "titre": "Repérage et symétries dans le plan",
+    "type": "ExerciceBrevet",
+    "niveau": "5e",
+    "description": "Repérer des points et effectuer des transformations."
+  },
+  {
+    "code": "e6P14-NoCapytale",
+    "titre": "Proportionnalité et prix",
+    "type": "ExerciceSimple",
+    "niveau": "6e",
+    "description": "Résoudre des problèmes de proportionnalité simples."
+  }
+]

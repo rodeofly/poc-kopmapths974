@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoC Hybride - MathALEA + SRS</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- KaTeX & MathLive -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+    <script defer src="https://unpkg.com/mathlive"></script>
+
+    <!-- Style global -->
+    <link rel="stylesheet" href="./css/style.css">
+  </head>
+
+  <body class="bg-gray-100 flex flex-col items-center min-h-screen py-8">
+
+    <!-- ⚙️ Paramètres -->
+    <div id="exerciseParameters" class="w-full max-w-2xl mb-4"></div>
+
+    <!-- 🧩 Bloc principal -->
+    <div id="exerciseContainer" class="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full border">
+      <div class="flex justify-between items-center mb-4">
+        <h1 id="questionTitleEl" class="text-2xl font-bold text-gray-800">Chargement...</h1>
+      </div>
+
+      <div id="questionContentEl" class="text-lg mb-6 p-4 bg-gray-50 rounded border"></div>
+
+      <div id="interactive-container">
+        <button id="validateButton" class="mt-4 w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition">
+          Valider
+        </button>
+      </div>
+
+      <div id="feedbackContainerEl" class="mt-4 text-lg font-semibold"></div>
+    </div>
+
+    <!-- 📦 Scripts -->
+    <script src="./js/mathalea.umd.js" defer></script>
+    <script type="module" src="./js/poc-v2.js"></script>
+  </body>
+</html>
