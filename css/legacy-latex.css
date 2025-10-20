@@ -1,0 +1,19 @@
+/* === Legacy LaTeX layout helpers === */
+.legacy-multicols {
+  column-gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.legacy-cols-2 {
+  column-count: 2;
+}
+
+.legacy-cols-3 {
+  column-count: 3;
+}
+
+.legacy-column-break {
+  break-before: column;
+  display: block;
+  height: 0;
+}

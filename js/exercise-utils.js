@@ -44,6 +44,22 @@ export function renderKaTeX(container, attempt = 0) {
 export function normalizeLegacyLatex(content = "") {
   if (!content) return "";
 
+  const applyInlineReplacements = (source) => {
+    let result = source;
+
+    const inlineMap = [
+      { regex: /\\textbf\{([^}]*)\}/gi, replace: "<strong>$1</strong>" },
+      { regex: /\\textit\{([^}]*)\}/gi, replace: "<em>$1</em>" },
+      { regex: /\\emph\{([^}]*)\}/gi, replace: "<em>$1</em>" }
+    ];
+
+    inlineMap.forEach(({ regex, replace }) => {
+      result = result.replace(regex, replace);
+    });
+
+    return result;
+  };
+
   const convertListEnv = (source, env, tag, className) =>
     source.replace(
       new RegExp(`\\\\begin\\{${env}\\}([\\s\\S]*?)\\\\end\\{${env}\\}`, "gi"),
@@ -64,7 +80,19 @@ export function normalizeLegacyLatex(content = "") {
       }
     );
 
+  const convertMultiColumns = (source) =>
+    source.replace(
+      /\\begin\{multicols\}\{(\d+)\}([\s\S]*?)\\end\{multicols\}/gi,
+      (_, count, inner) => {
+        const cols = Math.max(1, parseInt(count, 10) || 1);
+        const normalizedInner = normalizeLegacyLatex(inner.trim());
+        return `<div class="legacy-multicols legacy-cols-${cols}">${normalizedInner}</div>`;
+      }
+    );
+
   let html = content;
+  html = applyInlineReplacements(html);
+  html = convertMultiColumns(html);
   html = convertListEnv(html, "enumerate", "ol", "list-decimal ml-6 space-y-1");
   html = convertListEnv(html, "itemize", "ul", "list-disc ml-6 space-y-1");
 
@@ -75,6 +103,13 @@ export function normalizeLegacyLatex(content = "") {
   html = html.replace(/\\\\end\\{spacing\\}/gi, "</div>");
 
   html = html.replace(/\\\\item\s*/gi, "<br>• ");
+
+  html = html.replace(/\\columnbreak/gi, '<span class="legacy-column-break"></span>');
+
+  html = html.replace(
+    /\\\\(?!begin|end|item|\[|\(|frac|dfrac|text|mathrm|mathbf|mathbb|left|right|overline|underline|hat|bar|cdot|times)/gi,
+    "<br>"
+  );
 
   return html;
 }

@@ -2,7 +2,12 @@
 // 🧩 poc-v2.js
 // ==============================
 
-import { renderKaTeX, createFloatingConsole, renderExerciseParameters } from "./exercise-utils.js";
+import {
+  renderKaTeX,
+  createFloatingConsole,
+  renderExerciseParameters,
+  normalizeLegacyLatex
+} from "./exercise-utils.js";
 
 let exerciseList = [];
 let currentIndex = 0;
@@ -200,10 +205,11 @@ function renderExercise(ex) {
   if (!titleEl || !contentEl) return;
 
   titleEl.textContent = `Exercice ${ex.idExercice} (${ex.seed})`;
-  contentEl.innerHTML =
-    ex.contenu && ex.contenu.trim() !== ""
-      ? ex.contenu
-      : "<em>Aucun contenu généré</em>";
+  const rawContent = ex.contenu && ex.contenu.trim() !== "" ? ex.contenu : "";
+  const normalizedContent =
+    rawContent !== "" ? normalizeLegacyLatex(rawContent) : "<em>Aucun contenu généré</em>";
+
+  contentEl.innerHTML = normalizedContent;
   feedbackEl.textContent = "";
 
   // Rendu KaTeX
