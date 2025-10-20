@@ -63,6 +63,7 @@ function generateNewExercise(code = null) {
     console.log("🧮 Seed actuelle :", ex.seed);
     console.log("📦 Contenu brut :", ex.contenu);
     console.log("🧾 AutoCorrection :", ex.autoCorrection);
+    console.log("🧱 Exercice complet :", ex);
 
     renderExercise(ex);
 
