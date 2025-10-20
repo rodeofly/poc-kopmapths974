@@ -3,14 +3,28 @@
 // ==============================
 
 // 🧮 --- Rendu KaTeX propre ---
-export function renderKaTeX(container) {
-  if (!window.katex || !container) {
-    console.warn("⚠️ KaTeX non prêt ou container manquant.");
+export function renderKaTeX(container, attempt = 0) {
+  if (!container) {
+    console.warn("⚠️ Container KaTeX manquant.");
+    return;
+  }
+
+  const katexReady =
+    typeof window !== "undefined" &&
+    window.katex &&
+    typeof window.renderMathInElement === "function";
+
+  if (!katexReady) {
+    if (attempt < 10) {
+      window.setTimeout(() => renderKaTeX(container, attempt + 1), 100);
+    } else {
+      console.warn("⚠️ KaTeX n'est pas prêt après plusieurs tentatives.");
+    }
     return;
   }
 
   try {
-    renderMathInElement(container, {
+    window.renderMathInElement(container, {
       delimiters: [
         { left: "$$", right: "$$", display: true },
         { left: "\\[", right: "\\]", display: true },
