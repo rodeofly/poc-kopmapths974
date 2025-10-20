@@ -17,12 +17,85 @@ let floatingConsole = null;
 const exerciseOverrides = {};
 
 // ==============================
+// 🧭 Utilitaires de normalisation de codes
+// ==============================
+const availableMathaleaCodes = new Set();
+
+function registerExistingMathaleaCodes() {
+  if (typeof MathALEA !== "object" || MathALEA === null) return;
+
+  try {
+    Object.keys(MathALEA).forEach((key) => {
+      const entry = MathALEA[key];
+      if (entry && typeof entry === "object" && "default" in entry) {
+        availableMathaleaCodes.add(key);
+      }
+    });
+  } catch (error) {
+    console.warn("⚠️ Impossible d'inspecter les codes MathALEA :", error);
+  }
+}
+
+function hasMathaleaCode(code) {
+  if (!code) return false;
+
+  if (!availableMathaleaCodes.size) {
+    registerExistingMathaleaCodes();
+  }
+
+  if (availableMathaleaCodes.has(code)) {
+    return true;
+  }
+
+  if (typeof MathALEA === "object" && MathALEA !== null) {
+    const candidate = MathALEA[code];
+    if (candidate && typeof candidate === "object" && "default" in candidate) {
+      availableMathaleaCodes.add(code);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function resolveExerciseCode(meta = {}) {
+  const rawCode = typeof meta.code === "string" ? meta.code.trim() : "";
+  if (!rawCode) return rawCode;
+
+  if (hasMathaleaCode(rawCode)) {
+    return rawCode;
+  }
+
+  const niveauText = typeof meta.niveau === "string" ? meta.niveau : "";
+  const niveauDigitMatch = niveauText.match(/(\d)/);
+  const niveauDigit = niveauDigitMatch ? niveauDigitMatch[1] : null;
+
+  if (niveauDigit && /^e[A-Za-z0-9]/.test(rawCode)) {
+    const corrected = `${niveauDigit}${rawCode.slice(1)}`;
+    if (hasMathaleaCode(corrected)) {
+      console.info(
+        `🔧 Code corrigé automatiquement : ${rawCode} → ${corrected}`
+      );
+      return corrected;
+    }
+  }
+
+  return rawCode;
+}
+
+// ==============================
 // ⚙️ 1. Chargement du JSON
 // ==============================
 async function loadExerciseList() {
   try {
     const response = await fetch("mathalea_index_college.json");
-    exerciseList = await response.json();
+    const rawList = await response.json();
+    exerciseList = Array.isArray(rawList)
+      ? rawList.map((meta) => ({
+          ...meta,
+          resolvedCode: resolveExerciseCode(meta)
+        }))
+      : [];
     currentIndex = 0;
     console.log("📚 Index chargé :", exerciseList);
   } catch (err) {
@@ -64,7 +137,9 @@ function generateNewExercise(arg = null) {
     let targetIndex = pointerBefore;
 
     if (requestedCode) {
-      const foundIndex = exerciseList.findIndex((ex) => ex.code === requestedCode);
+      const foundIndex = exerciseList.findIndex(
+        (ex) => ex.resolvedCode === requestedCode || ex.code === requestedCode
+      );
       if (foundIndex === -1) {
         console.warn("⚠️ Code d'exercice inconnu :", requestedCode);
         return;
@@ -73,15 +148,18 @@ function generateNewExercise(arg = null) {
     }
 
     const exerciseMeta = exerciseList[targetIndex];
-    if (!exerciseMeta?.code) {
+    if (!exerciseMeta?.resolvedCode && !exerciseMeta?.code) {
       console.warn("⚠️ Entrée d'exercice invalide à l'index", currentIndex);
       return;
     }
 
-    const chosen = exerciseMeta.code;
+    const chosen = exerciseMeta.resolvedCode || exerciseMeta.code;
     currentCode = chosen;
 
     console.log("🎲 Exercice choisi :", chosen);
+    if (exerciseMeta.code && exerciseMeta.code !== chosen) {
+      console.log("ℹ️ Code original :", exerciseMeta.code);
+    }
 
     const ExClass = MathALEA[chosen];
     if (!ExClass || !ExClass.default) {
@@ -224,6 +302,7 @@ function renderExercise(ex) {
 // ⚡ 5. Initialisation
 // ==============================
 document.addEventListener("DOMContentLoaded", async () => {
+  registerExistingMathaleaCodes();
   await loadExerciseList();
 
   // création console flottante
