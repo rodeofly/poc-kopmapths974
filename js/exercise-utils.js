@@ -206,6 +206,8 @@ export function renderExerciseParameters(ex, { onApply } = {}) {
       value = hasSup && supValue !== undefined && supValue !== null ? supValue : rawValue ?? "";
     }
 
+    const targetKey = supKey || key;
+    
     return {
       key,
       type,
@@ -213,6 +215,8 @@ export function renderExerciseParameters(ex, { onApply } = {}) {
       helper,
       label,
       match,
+      supKey,
+      targetKey,
       defaultValue: Array.isArray(rawValue) ? rawValue[0] : rawValue
     };
   });
@@ -315,14 +319,16 @@ export function renderExerciseParameters(ex, { onApply } = {}) {
           namedItem instanceof RadioNodeList ? namedItem[0] : namedItem;
         if (!(input instanceof HTMLInputElement)) return;
 
+        const overrideKey = field.targetKey;
+
         if (/CaseACocher$/i.test(field.key)) {
-          overrides[field.key] = input.checked;
+          overrides[overrideKey] = input.checked;
         } else if (/Numerique$/i.test(field.key)) {
           const numericValue = input.value.trim();
           const parsed = Number(numericValue);
-          overrides[field.key] = numericValue === "" ? "" : Number.isFinite(parsed) ? parsed : numericValue;
+          overrides[overrideKey] = numericValue === "" ? "" : Number.isFinite(parsed) ? parsed : numericValue;
         } else {
-          overrides[field.key] = input.value;
+          overrides[overrideKey] = input.value;
         }
       });
 
