@@ -17,3 +17,61 @@
   display: block;
   height: 0;
 }
+
+.legacy-spacing {
+  margin: 0.75rem 0;
+}
+
+.legacy-spacing-intro {
+  margin-bottom: 0.5rem;
+}
+
+.legacy-spacing-list {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.legacy-spacing-list > li + li {
+  margin-top: 0.35rem;
+}
+
+.legacy-skip {
+  display: block;
+}
+
+.legacy-skip-small {
+  margin: 0.25rem 0;
+}
+
+.legacy-skip-medium {
+  margin: 0.75rem 0;
+}
+
+.legacy-skip-large {
+  margin: 1.5rem 0;
+}
+
+.legacy-margin-note {
+  font-size: 0.85em;
+  color: #4b5563;
+  margin-left: 0.5rem;
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.legacy-item-bullet {
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+.legacy-page-break {
+  border: 0;
+  border-top: 1px dashed #d1d5db;
+  margin: 1.5rem 0;
+}
+
+.legacy-hfill {
+  display: inline-block;
+  width: 100%;
+}

@@ -41,8 +41,12 @@ export function renderKaTeX(container, attempt = 0) {
 // ==============================
 // 🔤 Normalisation du LaTeX résiduel
 // ==============================
-export function normalizeLegacyLatex(content = "") {
+export function normalizeLegacyLatex(content = "", depth = 0) {
   if (!content) return "";
+  if (depth > 10) return content;
+
+  const normalizeNested = (value) =>
+    value && value.trim() !== "" ? normalizeLegacyLatex(value, depth + 1) : "";
 
   const applyInlineReplacements = (source) => {
     let result = source;
@@ -75,7 +79,9 @@ export function normalizeLegacyLatex(content = "") {
         if (!items.length) {
           return `<${tag} class="${className}"></${tag}>`;
         }
-        const listItems = items.map((item) => `<li>${item}</li>`).join("");
+        const listItems = items
+          .map((item) => `<li>${normalizeNested(item)}</li>`)
+          .join("");
         return `<${tag} class="${className}">${listItems}</${tag}>`;
       }
     );
@@ -85,8 +91,49 @@ export function normalizeLegacyLatex(content = "") {
       /\\begin\{multicols\}\{(\d+)\}([\s\S]*?)\\end\{multicols\}/gi,
       (_, count, inner) => {
         const cols = Math.max(1, parseInt(count, 10) || 1);
-        const normalizedInner = normalizeLegacyLatex(inner.trim());
+        const normalizedInner = normalizeNested(inner.trim());
         return `<div class="legacy-multicols legacy-cols-${cols}">${normalizedInner}</div>`;
+      }
+    );
+  
+    const convertSpacingEnv = (source) =>
+    source.replace(
+      /\\begin\{spacing\}\{([^}]*)\}([\s\S]*?)\\end\{spacing\}/gi,
+      (_, ratio, inner) => {
+        const sanitizedRatio = String(ratio ?? "")
+          .trim()
+          .replace(/[^0-9.,-]/g, "")
+          .replace(",", ".");
+        const numericRatio = parseFloat(sanitizedRatio);
+        const attrParts = [];
+        if (sanitizedRatio) attrParts.push(`data-spacing="${sanitizedRatio}"`);
+        if (Number.isFinite(numericRatio) && numericRatio > 0) {
+          attrParts.push(`style="line-height:${numericRatio};"`);
+        }
+        const attrString = attrParts.length ? ` ${attrParts.join(" ")}` : "";
+
+        const segments = inner.split(/\\item\s*/gi);
+        const prelude = segments.shift()?.trim() ?? "";
+        const items = segments
+          .map((segment) => segment.trim())
+          .filter(Boolean)
+          .map((segment) => `<li>${normalizeNested(segment)}</li>`);
+
+        if (items.length) {
+          const listMarkup = `<ul class="legacy-spacing legacy-spacing-list"${attrString}>${items.join(
+            ""
+          )}</ul>`;
+
+          if (prelude) {
+            const normalizedPrelude = normalizeNested(prelude);
+            return `<div class="legacy-spacing"${attrString}><div class="legacy-spacing-intro">${normalizedPrelude}</div>${listMarkup}</div>`;
+          }
+
+          return listMarkup;
+        }
+
+        const normalizedInner = normalizeNested(inner.trim());
+        return `<div class="legacy-spacing"${attrString}>${normalizedInner}</div>`;
       }
     );
 
@@ -96,13 +143,33 @@ export function normalizeLegacyLatex(content = "") {
   html = convertListEnv(html, "enumerate", "ol", "list-decimal ml-6 space-y-1");
   html = convertListEnv(html, "itemize", "ul", "list-disc ml-6 space-y-1");
 
-  html = html.replace(
-    /\\\\begin\\{spacing\\}\\{[^}]*\\}/gi,
-    '<div class="leading-relaxed space-y-2">'
-  );
-  html = html.replace(/\\\\end\\{spacing\\}/gi, "</div>");
+  html = convertSpacingEnv(html);
 
-  html = html.replace(/\\\\item\s*/gi, "<br>• ");
+  const skipTokens = [
+    { regex: /\\medskip/gi, replace: '<div class="legacy-skip legacy-skip-medium"></div>' },
+    { regex: /\\smallskip/gi, replace: '<div class="legacy-skip legacy-skip-small"></div>' },
+    { regex: /\\bigskip/gi, replace: '<div class="legacy-skip legacy-skip-large"></div>' }
+  ];
+
+  skipTokens.forEach(({ regex, replace }) => {
+    html = html.replace(regex, replace);
+  });
+
+  html = html.replace(/\\marginpar\{([\\s\\S]*?)\}/gi, (_, inner) => {
+    const cleaned = inner.replace(/\\footnotesize\s*/gi, "").trim();
+    if (!cleaned) return "";
+    const normalizedNote = normalizeNested(cleaned);
+    return `<span class="legacy-margin-note">${normalizedNote}</span>`;
+  });
+
+  html = html.replace(/\\newline/gi, "<br>");
+  html = html.replace(/\\newpage/gi, '<hr class="legacy-page-break">');
+  html = html.replace(/\\noindent\s*/gi, "");
+  html = html.replace(/\\hfill/gi, '<span class="legacy-hfill"></span>');
+
+  html = html.replace(/\\footnotesize\s*/gi, "");
+
+  html = html.replace(/\\\\item\s*/gi, '<br><span class="legacy-item-bullet">•</span> ');
 
   html = html.replace(/\\columnbreak/gi, '<span class="legacy-column-break"></span>');
 
