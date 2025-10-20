@@ -1,0 +1,241 @@
+diff --git a/js/poc-v2.js b/js/poc-v2.js
+index 89693932cb8998860a1842bbd1b0659b73d41bea..878b863325b26afedf971cd968f71c182f1c5a8c 100644
+--- a/js/poc-v2.js
++++ b/js/poc-v2.js
+@@ -234,155 +234,175 @@ function generateNewExercise(arg = null) {
+ // ==============================
+ function normalizeAnswerNode(node, collector) {
+   if (!collector) {
+     collector = { values: [], displays: [] };
+   }
+ 
+   if (node == null) {
+     return collector;
+   }
+ 
+   const pushValue = (value, display = null) => {
+     if (value != null && value !== "") {
+       collector.values.push(String(value));
+     }
+     if (display != null && display !== "") {
+       collector.displays.push(String(display));
+     }
+   };
+ 
+   if (Array.isArray(node)) {
+     node.forEach((item) => normalizeAnswerNode(item, collector));
+     return collector;
+   }
+ 
+   if (typeof node === "object") {
++    if ("reponse" in node && node.reponse !== node) {
++      normalizeAnswerNode(node.reponse, collector);
++      return collector;
++    }
++
++    if ("reponses" in node && node.reponses !== node) {
++      normalizeAnswerNode(node.reponses, collector);
++      return collector;
++    }
++
+     if ("value" in node && node.value !== node) {
+       normalizeAnswerNode(node.value, collector);
+     } else if ("valeur" in node && node.valeur !== node) {
+       normalizeAnswerNode(node.valeur, collector);
+     } else if ("texte" in node) {
+       pushValue(node.texte, node.texte);
+     } else if ("tex" in node) {
+       pushValue(node.tex, node.tex);
+     } else if ("texteCorr" in node) {
+       pushValue(node.texteCorr, node.texteCorr);
+     } else if ("display" in node && node.display !== node) {
+       normalizeAnswerNode(node.display, collector);
+     } else if ("min" in node || "max" in node) {
+       const min = node.min ?? node.minValue ?? "";
+       const max = node.max ?? node.maxValue ?? "";
+       if (min !== "" || max !== "") {
+         const rangeLabel = [min, max].filter((part) => part !== "").join(" – ");
+         pushValue(rangeLabel, rangeLabel);
+       }
+     } else {
+       try {
+         const serialized = JSON.stringify(node);
+         pushValue(serialized, serialized);
+       } catch (error) {
+         console.warn("⚠️ Réponse inattendue :", node, error);
+       }
+     }
+     return collector;
+   }
+ 
+   pushValue(node);
+   return collector;
+ }
+ 
+ function extractExpectedAnswer(corr) {
+   if (!corr) {
+-    return { value: "", display: "" };
++    return { value: "", display: "", values: [] };
+   }
+ 
+   const collector = normalizeAnswerNode(corr.reponse ?? corr);
+-  const value = collector.values.join(" ; ").trim();
++  const rawValues = collector.values.map((val) => String(val).trim()).filter(Boolean);
++  const value = rawValues.join(" ; ");
+   const displaySource = collector.displays.join(" ; ");
+   const display = (displaySource || value).trim();
+ 
+   return {
+     value,
+-    display
++    display,
++    values: rawValues
+   };
+ }
+ 
+ function normalizeTextValue(value) {
+   if (value == null) return "";
+   return String(value)
++    .replace(/[\u00a0\u202f]/g, " ")
+     .replace(/\s+/g, " ")
+     .replace(/,/g, ".")
+     .trim();
+ }
+ 
+ function setFieldValidationState(field, isCorrect) {
+   if (!field) return;
+ 
+   const baseClasses = ["border", "rounded", "px-2", "py-1"];
+   const successClasses = ["border-green-500", "bg-green-50"]; // math-field support classList
+   const errorClasses = ["border-red-500", "bg-red-50"];
+ 
+   const classList = field.classList;
+   if (classList) {
+     baseClasses.forEach((cls) => classList.add(cls));
+     successClasses.concat(errorClasses).forEach((cls) => classList.remove(cls));
+     if (isCorrect) {
+       successClasses.forEach((cls) => classList.add(cls));
+       field.setAttribute("aria-invalid", "false");
+     } else {
+       errorClasses.forEach((cls) => classList.add(cls));
+       field.setAttribute("aria-invalid", "true");
+     }
+   }
+ }
+ 
+ function validateAnswer() {
+   console.log("🧠 validateAnswer() déclenchée !");
+ 
+   const ex = window.contextExercice;
+   if (!ex) {
+     console.warn("Aucun exercice actif !");
+     return;
+   }
+ 
+   const corrections = ex.autoCorrection || [];
+   let score = 0;
+   let total = 0;
+   const feedbackDetails = [];
+ 
+   corrections.forEach((corr, i) => {
+     if (!corr || !corr.reponse) return;
+ 
+-    const { value: expectedValue, display: expectedDisplay } = extractExpectedAnswer(corr);
++    const {
++      value: expectedValue,
++      display: expectedDisplay,
++      values: expectedValues
++    } = extractExpectedAnswer(corr);
+     const champ = document.querySelector(`#champTexteExundefinedQ${i}`);
+     if (!champ) return;
+ 
+     total++;
+     const userVal = champ.value?.trim() || champ.getValue?.()?.trim() || "";
+     const normalizedUser = normalizeTextValue(userVal);
+-    const candidateExpected = normalizeTextValue(expectedValue) || normalizeTextValue(expectedDisplay);
+-    const isCorrect = candidateExpected !== "" && normalizedUser === candidateExpected;
++    const candidateList = (expectedValues.length ? expectedValues : [expectedValue])
++      .map((candidate) => normalizeTextValue(candidate))
++      .filter((candidate) => candidate !== "");
++
++    const isCorrect = candidateList.some((candidate) => normalizedUser === candidate);
+ 
+     setFieldValidationState(champ, isCorrect);
+ 
+     const resultEl = document.querySelector(`#resultatCheckExundefinedQ${i}`);
+     if (resultEl) {
+       resultEl.textContent = isCorrect ? "✅" : "❌";
+       resultEl.className = isCorrect ? "text-green-600" : "text-red-600";
+     }
+ 
+     feedbackDetails.push(
+       `<li class="${
+         isCorrect ? "text-green-700" : "text-red-700"
+       }">${isCorrect ? "✅" : "❌"} Question ${
+         i + 1
+       } – Votre réponse : <strong>${userVal || "(vide)"}</strong>, attendu : <strong>${expectedDisplay || "?"}</strong></li>`
+     );
+ 
+     if (isCorrect) score++;
+   });
+ 
+   const feedback = document.getElementById("feedbackContainerEl");
+     if (feedback) {
+       if (!total) {
+         feedback.innerHTML = "⚠️ Aucune question évaluée.";
+       } else {
+         const detailList = feedbackDetails.length
+           ? `<ul class="mt-2 space-y-1 text-base">${feedbackDetails.join("")}</ul>`
+           : "";
+         feedback.innerHTML = `🎯 Score : <strong>${score}/${total}</strong>${detailList}`;
+         renderKaTeX(feedback);
+       }
+     }
+   }
+   
+   // ==============================
+   // 🧾 4. Rendu de l'exercice
+   // ==============================
+   function renderExercise(ex) {
+     const titleEl = document.getElementById("questionTitleEl");
+     const contentEl = document.getElementById("questionContentEl");
+     const feedbackEl = document.getElementById("feedbackContainerEl");
+   
+     if (!titleEl || !contentEl) return;
+   
+     titleEl.textContent = `Exercice ${ex.idExercice} (${ex.seed})`;
+     const rawContent = ex.contenu && ex.contenu.trim() !== "" ? ex.contenu : "";
+     const normalizedContent =
+       rawContent !== "" ? normalizeLegacyLatex(rawContent) : "<em>Aucun contenu généré</em>";
+   
+     contentEl.innerHTML = normalizedContent;
+     feedbackEl.textContent = "";
+   
+     // Rendu KaTeX
+     renderKaTeX(contentEl);
+   
+     // Focus sur le premier champ si existant
+     const firstField = contentEl.querySelector("math-field, input");
+     if (firstField) firstField.focus();
+   }
+   
+   // ==============================
+   // ⚡ 5. Initialisation
+   // ==============================
+   document.addEventListener("DOMContentLoaded", async () => {
+     registerExistingMathaleaCodes();
+     await loadExerciseList();
+   
+     // création console flottante
+     floatingConsole = createFloatingConsole((newCode) => {
+       generateNewExercise({ code: newCode });
+     });
+   
+     // premier exercice
+     generateNewExercise();
+   
+     // bouton Valider
+     document
+       .getElementById("validateButton")
+       .addEventListener("click", validateAnswer);
+   });

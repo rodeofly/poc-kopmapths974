@@ -256,7 +256,17 @@ function normalizeAnswerNode(node, collector) {
   }
 
   if (typeof node === "object") {
-    if ("value" in node && node.value !== node) {
+     if ("reponse" in node && node.reponse !== node) {
+      normalizeAnswerNode(node.reponse, collector);
+      return collector;
+    }
+
+    if ("reponses" in node && node.reponses !== node) {
+      normalizeAnswerNode(node.reponses, collector);
+      return collector;
+    }
+
+if ("value" in node && node.value !== node) {
       normalizeAnswerNode(node.value, collector);
     } else if ("valeur" in node && node.valeur !== node) {
       normalizeAnswerNode(node.valeur, collector);
@@ -292,23 +302,26 @@ function normalizeAnswerNode(node, collector) {
 
 function extractExpectedAnswer(corr) {
   if (!corr) {
-    return { value: "", display: "" };
+    return { value: "", display: "", values: [] };
   }
 
   const collector = normalizeAnswerNode(corr.reponse ?? corr);
-  const value = collector.values.join(" ; ").trim();
+  const rawValues = collector.values.map((val) => String(val).trim()).filter(Boolean);
+  const value = rawValues.join(" ; ");
   const displaySource = collector.displays.join(" ; ");
   const display = (displaySource || value).trim();
 
   return {
     value,
-    display
+    display,
+    values: rawValues
   };
 }
 
 function normalizeTextValue(value) {
   if (value == null) return "";
   return String(value)
+    .replace(/[\u00a0\u202f]/g, " ")
     .replace(/\s+/g, " ")
     .replace(/,/g, ".")
     .trim();
@@ -352,15 +365,22 @@ function validateAnswer() {
   corrections.forEach((corr, i) => {
     if (!corr || !corr.reponse) return;
 
-    const { value: expectedValue, display: expectedDisplay } = extractExpectedAnswer(corr);
+    const {
+      value: expectedValue,
+      display: expectedDisplay,
+      values: expectedValues
+    } = extractExpectedAnswer(corr);
     const champ = document.querySelector(`#champTexteExundefinedQ${i}`);
     if (!champ) return;
 
     total++;
     const userVal = champ.value?.trim() || champ.getValue?.()?.trim() || "";
     const normalizedUser = normalizeTextValue(userVal);
-    const candidateExpected = normalizeTextValue(expectedValue) || normalizeTextValue(expectedDisplay);
-    const isCorrect = candidateExpected !== "" && normalizedUser === candidateExpected;
+    const candidateList = (expectedValues.length ? expectedValues : [expectedValue])
+      .map((candidate) => normalizeTextValue(candidate))
+      .filter((candidate) => candidate !== "");
+
+    const isCorrect = candidateList.some((candidate) => normalizedUser === candidate);
 
     setFieldValidationState(champ, isCorrect);
 
