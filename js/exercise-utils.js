@@ -248,12 +248,19 @@ export function createFloatingConsole(onExerciseChange) {
         <label class="text-xs text-gray-600 mb-1 block">Changer d’exercice :</label>
         <select id="exoSelect" class="border border-gray-300 rounded px-1 py-0.5 w-full">
           ${exerciseList
-            .map(
-              (e) =>
-                `<option value="${e.code}" ${
-                  e.code === currentCode ? "selected" : ""
-                }>${e.code} - ${e.titre}</option>`
-            )
+            .map((e) => {
+              const resolvedCode = e.resolvedCode || e.code || "";
+              const originalCode = e.code;
+              const labelCode = resolvedCode || originalCode || "?";
+              const legacyInfo =
+                originalCode && originalCode !== resolvedCode
+                  ? ` (ancien : ${originalCode})`
+                  : "";
+              const titre = e.titre || "Sans titre";
+              const isSelected = resolvedCode === currentCode || originalCode === currentCode;
+              const selectedAttr = isSelected ? "selected" : "";
+              return `<option value="${resolvedCode}" ${selectedAttr}>${labelCode}${legacyInfo} - ${titre}</option>`;
+            })
             .join("")}
         </select>
       `;
