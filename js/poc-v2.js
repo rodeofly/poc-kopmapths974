@@ -5,9 +5,11 @@
 import { renderKaTeX, createFloatingConsole, renderExerciseParameters } from "./exercise-utils.js";
 
 let exerciseList = [];
+let currentIndex = 0;
 let currentCode = null;
 let currentExercise = null;
 let floatingConsole = null;
+const exerciseOverrides = {};
 
 // ==============================
 // ⚙️ 1. Chargement du JSON
@@ -16,6 +18,7 @@ async function loadExerciseList() {
   try {
     const response = await fetch("mathalea_index_college.json");
     exerciseList = await response.json();
+    currentIndex = 0;
     console.log("📚 Index chargé :", exerciseList);
   } catch (err) {
     console.error("❌ Impossible de charger la liste d'exercices :", err);
@@ -25,14 +28,52 @@ async function loadExerciseList() {
 // ==============================
 // 🎲 2. Génération d'un exercice
 // ==============================
-function generateNewExercise(code = null) {
+function generateNewExercise(arg = null) {
   console.clear();
   console.log("🧩 Début de génération d’un exercice...");
 
   try {
     // si aucun code fourni → aléatoire
-    const chosen =
-      code || exerciseList[Math.floor(Math.random() * exerciseList.length)].code;
+    if (!exerciseList.length) {
+      console.warn("⚠️ Aucune liste d'exercices chargée.");
+      return;
+    }
+
+    let requestedCode = null;
+    let providedOverrides = null;
+    let preserveIndex = false;
+
+    if (typeof arg === "string") {
+      requestedCode = arg;
+    } else if (arg && typeof arg === "object") {
+      requestedCode = arg.code ?? null;
+      providedOverrides = arg.overrides ?? null;
+      preserveIndex = Boolean(arg.preserveIndex);
+    }
+
+    if (currentIndex < 0 || currentIndex >= exerciseList.length) {
+      currentIndex = 0;
+    }
+
+    const pointerBefore = currentIndex;
+    let targetIndex = pointerBefore;
+
+    if (requestedCode) {
+      const foundIndex = exerciseList.findIndex((ex) => ex.code === requestedCode);
+      if (foundIndex === -1) {
+        console.warn("⚠️ Code d'exercice inconnu :", requestedCode);
+        return;
+      }
+      targetIndex = foundIndex;
+    }
+
+    const exerciseMeta = exerciseList[targetIndex];
+    if (!exerciseMeta?.code) {
+      console.warn("⚠️ Entrée d'exercice invalide à l'index", currentIndex);
+      return;
+    }
+
+    const chosen = exerciseMeta.code;
     currentCode = chosen;
 
     console.log("🎲 Exercice choisi :", chosen);
@@ -49,6 +90,19 @@ function generateNewExercise(code = null) {
     ex.interactifReady = true;
     ex.idExercice = chosen;
     window.contextExercice = ex;
+    
+    currentExercise = ex;
+
+    if (providedOverrides && typeof providedOverrides === "object") {
+      exerciseOverrides[chosen] = { ...providedOverrides };
+    }
+
+    const storedOverrides = exerciseOverrides[chosen];
+    if (storedOverrides && typeof storedOverrides === "object") {
+      Object.entries(storedOverrides).forEach(([key, value]) => {
+        ex[key] = value;
+      });
+    }
 
     // gestion du seed
     const seed = ex.seed || Math.random().toString(36).substring(2, 6);
@@ -67,8 +121,25 @@ function generateNewExercise(code = null) {
 
     renderExercise(ex);
 
-    floatingConsole.update(exerciseList, currentCode, ex.seed);
-    renderExerciseParameters(ex);
+    if (floatingConsole) {
+      floatingConsole.update(exerciseList, currentCode, ex.seed);
+    }
+    renderExerciseParameters(ex, {
+      onApply: (overrides) => {
+        exerciseOverrides[chosen] = { ...overrides };
+        generateNewExercise({
+          code: chosen,
+          overrides,
+          preserveIndex: true
+        });
+      }
+    });
+
+    if (!preserveIndex) {
+      currentIndex = (targetIndex + 1) % exerciseList.length;
+    } else {
+      currentIndex = pointerBefore;
+    }
 
   } catch (err) {
     console.error("Erreur de génération :", err);
@@ -151,7 +222,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // création console flottante
   floatingConsole = createFloatingConsole((newCode) => {
-    generateNewExercise(newCode);
+    generateNewExercise({ code: newCode });
   });
 
   // premier exercice
