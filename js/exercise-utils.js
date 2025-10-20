@@ -176,17 +176,18 @@ export function renderExerciseParameters(ex, { onApply } = {}) {
 
   const fields = parameterKeys.map((key) => {
     const match = key.match(/^besoinFormulaire(\d*)(Texte|Numerique|CaseACocher)/i);
-    const index = match ? match[1] || "1" : "";
+    const indexRaw = match ? match[1] : "";
+    const displayIndex = indexRaw || "1";
     const type = match ? match[2] : "Texte";
     const rawValue = ex[key];
 
-    const supKey = match ? (index ? `sup${index}` : "sup") : null;
+    const supKey = match ? (indexRaw ? `sup${indexRaw}` : "sup") : null;
     const hasSup = supKey ? Object.prototype.hasOwnProperty.call(ex, supKey) : false;
     const supValue = hasSup ? ex[supKey] : undefined;
 
     let value = "";
     let helper = "";
-    let label = `Paramètre ${index || ""}`.trim();
+    let label = `Paramètre ${displayIndex || ""}`.trim();
 
     if (Array.isArray(rawValue)) {
       if (/CaseACocher$/i.test(key)) {
@@ -215,6 +216,8 @@ export function renderExerciseParameters(ex, { onApply } = {}) {
       helper,
       label,
       match,
+      supKey,
+      targetKey: supKey || key,
       supKey,
       targetKey,
       defaultValue: Array.isArray(rawValue) ? rawValue[0] : rawValue
